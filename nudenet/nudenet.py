@@ -1,31 +1,30 @@
 #!/usr/bin/env python
 import pillow_avif  # noqa
-from PIL import Image
-from io import BytesIO
+from PIL import Image, ImageFont, ImageDraw
 import os
 import cv2
 import numpy as np
 import onnxruntime
 
 __labels = [
-    "FEMALE_GENITALIA_COVERED",
-    "FACE_FEMALE",
-    "BUTTOCKS_EXPOSED",
-    "FEMALE_BREAST_EXPOSED",
-    "FEMALE_GENITALIA_EXPOSED",
-    "MALE_BREAST_EXPOSED",
-    "ANUS_EXPOSED",
-    "FEET_EXPOSED",
-    "BELLY_COVERED",
-    "FEET_COVERED",
-    "ARMPITS_COVERED",
-    "ARMPITS_EXPOSED",
-    "FACE_MALE",
-    "BELLY_EXPOSED",
-    "MALE_GENITALIA_EXPOSED",
-    "ANUS_COVERED",
-    "FEMALE_BREAST_COVERED",
-    "BUTTOCKS_COVERED",
+    "女生殖器",
+    "女脸",
+    "屁股裸露",
+    "女胸裸露",
+    "女生殖器裸露",
+    "男胸裸露",
+    "肛门裸露",
+    "FEET裸露",
+    "腹部",
+    "FEET",
+    "腋窝",
+    "腋窝裸露",
+    "男脸",
+    "腹部裸露",
+    "男生殖器裸露",
+    "肛门",
+    "女胸",
+    "屁股",
 ]
 
 
@@ -71,11 +70,7 @@ def _postprocess(output, img_width, img_height, input_width, input_height):
     box = boxes[i]
     score = scores[i]
     class_id = class_ids[i]
-    detections.append({
-        "class": __labels[class_id],
-        "score": float(score),
-        "box": box
-    })
+    detections.append((class_id, float(score), box))
 
   return detections
 
@@ -108,7 +103,36 @@ if __name__ == "__main__":
   DIR = dirname(dirname(abspath(__file__)))
   fp = join(DIR, "img/2.avif")
   img = Image.open(fp)
-  img = np.array(img.convert('RGB'))
-  detections = detector.detect(img)
-  for i in detections:
-    print(i)
+  detections = detector.detect(np.array(img.convert('RGB')))
+
+  font_path = join(DIR, 'font/DroidSansFallback.ttf')
+  font = ImageFont.truetype(font_path, 20, encoding="utf-8")
+  canvas = ImageDraw.Draw(img)
+
+  n = 0
+  for (kind, score, box) in detections:
+    name = __labels[kind]
+    score = int(1000 * score) / 10
+    print(name, score, box)
+    p1 = box[:2]
+    p2 = box[2:]
+    n += 1
+    color = [255, 255, 255]
+    color[n % 3] = 0
+    color = tuple(color)
+    canvas.text([p1[0] + 5, p1[1] + 10],
+                f"{name} {score}",
+                color,
+                font=font,
+                stroke_width=1,
+                stroke_fill=(0, 0, 0))
+    canvas.rectangle(xy=(p1[0], p1[1], p1[0] + p2[0], p1[1] + p2[1]),
+                     fill=None,
+                     outline=color,
+                     width=2)
+
+    # cv2.rectangle(img, p1, [], (0, 255, 0), 2)
+    # cv2.putText(img, f'{name} {score}', [p1[0], p1[1] - 15], font, 1,
+    #             (0, 255, 255), 2)
+
+  img.save(join(DIR, 'out/1.png'))

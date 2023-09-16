@@ -108,7 +108,7 @@ if __name__ == "__main__":
   font = ImageFont.truetype(font_path, 20, encoding="utf-8")
 
   for fp in glob(join(DIR, 'img/*.avif')):
-    print(fp)
+    print('\n' + fp)
     img = Image.open(fp)
     detections = detector.detect(np.array(img.convert('RGB')))
     canvas = ImageDraw.Draw(img)
